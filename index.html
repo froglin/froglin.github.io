@@ -8,6 +8,10 @@
   body { font-family: Arial, sans-serif; margin: 0; background:#f4f4f4; color:#222; }
   .wrap { max-width: 1400px; margin: 20px auto; padding: 0 18px; }
   h1 { margin: 0 0 12px; }
+  .result-time-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:17px}.result-time-row b{font-size:24px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .lang-toggle{border:1px solid #bbb;background:#fff;border-radius:7px;padding:8px 12px;font-size:15px;cursor:pointer;white-space:nowrap}
+  @media(max-width:480px){.topbar{align-items:flex-start}.lang-toggle{font-size:14px;padding:7px 10px}}
   .panel { background:white; padding:16px; border-radius:10px; box-shadow:0 2px 10px #0001; margin-bottom:14px; }
   .controls { display:grid; grid-template-columns: repeat(4, minmax(150px,1fr)); gap:12px; }
   label { font-weight:600; display:block; margin-bottom:5px; }
@@ -44,23 +48,26 @@
 <body>
 <div class="wrap">
   <div class="panel">
-    <h1>Калькулятор наведення гармати</h1>
+    <div class="topbar">
+      <h1 id="pageTitle">Калькулятор наведення гармати</h1>
+      <button id="langToggle" class="lang-toggle" type="button">🇬🇧 English</button>
+    </div>
     <div class="controls">
       <div id="distanceField">
         <label id="distanceLabel" for="distance">Відстань, км</label>
-        <input id="distance" type="number" min="0" max="30" step="0.01" value="20.00">
+        <input id="distance" type="number" min="0" max="30" step="0.01" value="5.00">
       </div>
       <div id="chargesField">
         <label id="chargesLabel" for="charges">Порохові заряди</label>
         <select id="charges">
           <option value="1">1 заряд</option>
-          <option value="2">2 заряди</option>
+          <option value="2" selected>2 заряди</option>
           <option value="3">3 заряди</option>
           <option value="4">4 заряди</option>
           <option value="5">5 зарядів</option>
           <option value="6">6 зарядів</option>
         </select>
-        <div id="chargeModeHint" class="hint" style="margin-top:5px">Автоматично за відстанню</div>
+        <div id="chargeModeHint" class="hint" style="margin-top:5px"><span id="chargeModeHint">Автоматично за відстанню</span></div>
       </div>
       <div id="angleField">
         <label id="angleLabel" for="angle">Кут, °</label>
@@ -72,73 +79,82 @@
       </div>
     </div>
     <div class="toggles">
-      <label class="toggle"><input id="showCharges" type="checkbox" checked> Показувати поле зарядів</label>
-      <label class="toggle"><input id="showAngle" type="checkbox" checked> Показувати поле кута</label>
-      <label class="toggle"><input id="showTime" type="checkbox" checked> Показувати поле часу</label>
+      <label class="toggle"><input id="showCharges" type="checkbox" checked> <span id="showChargesLabel">Показувати поле зарядів</span></label>
+      <label class="toggle"><input id="showAngle" type="checkbox" checked> <span id="showAngleLabel">Показувати поле кута</span></label>
+      <label class="toggle"><input id="showTime" type="checkbox" checked> <span id="showTimeLabel">Показувати поле часу</span></label>
     </div>
     <div id="errorBox" class="error-box"></div>
     <div class="results">
-      <div class="result">Для заданої відстані
-        <b id="rAngle">—</b>кут
-        <b id="rDistanceTime" style="margin-top:8px">—</b>час польоту
+      <div class="result"><span id="resultDistanceLabel">Для заданої відстані</span>
+        <b id="rAngle">—</b><span id="angleUnit">кут</span>
+        <b id="rDistanceTime" style="margin-top:8px">—</b><span id="flightUnit">час польоту</span>
       </div>
-      <div class="result" id="angleDistanceResult">Дальність при заданому куті<b id="rDistance">—</b>км</div>
-      <div class="result" id="angleTimeResult">Час при заданому куті<b id="rTime">—</b>с</div>
-      <div class="result" id="timeDistanceResult">Дальність при заданому часі<b id="rTimeDistance">—</b>км</div>
+      <div class="result" id="angleDistanceResult"><span id="resultAngleDistanceLabel">Дальність при заданому куті</span><b id="rDistance">—</b><span id="rangeUnit">км</span></div>
+      <div class="result" id="angleTimeResult"><span id="resultAngleTimeLabel">Час при заданому куті</span><b id="rTime">—</b><span id="timeUnit">с</span></div>
+      <div class="result" id="timeDistanceResult"><span id="resultTimeDistanceLabel">Дальність при заданому часі</span><b id="rTimeDistance">—</b><span id="timeRangeUnit">км</span></div>
     </div>
     <div class="hint">
-      Кількість зарядів за замовчуванням визначається автоматично: до 5,00 км — 1 заряд,
+      <span id="chargesHint">Кількість зарядів за замовчуванням визначається автоматично: до 5,00 км — 1 заряд,
       понад 5,00 км — 2, понад 10,00 км — 3 і т.д. Але її можна вручну змінити, якщо
-      фактично зарядив іншу кількість. Максимум — 6 зарядів.
+      фактично зарядив іншу кількість. Максимум — 6 зарядів.</span>
     </div>
   </div>
 
 
   <div class="panel time-panel">
-    <h2 style="margin-top:0">Калькулятор часу пострілу</h2>
+    <h2 style="margin-top:0"><span id="fireCalcTitle">Калькулятор часу пострілу</span></h2>
+
     <div class="time-controls">
       <div>
-        <label for="targetHour">Година</label>
-        <input id="targetHour" type="number" min="0" max="23" step="1" value="12">
+        <label for="enemyHour"><span id="enemyHourLabel">Година появи</span></label>
+        <input id="enemyHour" type="number" min="0" max="23" step="1" value="12">
       </div>
       <div>
-        <label for="targetMinute">Хвилина</label>
-        <input id="targetMinute" type="number" min="0" max="59" step="1" value="00">
+        <label for="enemyMinute"><span id="enemyMinuteLabel">Хвилина появи</span></label>
+        <input id="enemyMinute" type="number" min="0" max="59" step="1" value="00">
       </div>
       <div>
-        <label for="targetSecond">Секунда</label>
-        <input id="targetSecond" type="number" min="0" max="59" step="1" value="00">
+        <label for="enemySecond"><span id="enemySecondLabel">Секунда появи</span></label>
+        <input id="enemySecond" type="number" min="0" max="59" step="1" value="00">
       </div>
     </div>
-    <div class="clock-box">
-      Поточний час:
-      <b id="currentClock">--:--:--</b>
+
+    <div style="margin-top:14px">
+      <label for="minutesToTarget"><span id="minutesToTargetLabel">Хвилин до цілі</span></label>
+      <input id="minutesToTarget" type="number" min="0" max="999" step="1" value="5">
     </div>
-    <div class="fire-result">
-      Щоб снаряд упав у заданий час, постріл потрібно зробити о:
-      <b id="fireTime">--:--:--</b>
+
+    <div class="fire-result" style="margin-top:14px">
+      <div class="result-time-row">
+        <span id="targetArrivalLabel">Час прибуття цілі:</span>
+        <b id="targetArrivalTime">--:--:--</b>
+      </div>
+      <div class="result-time-row" style="margin-top:10px">
+        <span id="fireAtLabel">Час пострілу:</span>
+        <b id="fireTime">--:--:--</b>
+      </div>
       <div class="hint" id="fireDetails">Час польоту: —</div>
     </div>
+
     <div class="hint">
-      Вводь час падіння так, як він показаний у грі. Калькулятор віднімає час польоту
-      від заданого часу та показує момент пострілу.
+      <span id="fireHint">Введи час появи ворога та кількість хвилин до моменту, коли він буде в потрібній точці. Калькулятор визначить час прибуття цілі та момент пострілу з урахуванням часу польоту снаряда.</span>
     </div>
   </div>
 
   <div class="panel">
     <aside class="history">
-      <h2>Останні 5 розрахунків</h2>
+      <h2><span id="historyTitle">Останні 5 розрахунків</span></h2>
       <table>
-        <thead><tr><th>Відстань</th><th>Заряди</th><th>Кут</th><th>Постріл</th><th>Політ</th></tr></thead>
-        <tbody id="historyBody"><tr><td colspan="5" class="empty">Поки що немає розрахунків</td></tr></tbody>
+        <thead><tr><th id="hDistance">Відстань</th><th id="hCharges">Заряди</th><th id="hAngle">Кут</th><th id="hLaunch">Постріл</th><th id="hFlight">Політ</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="5" class="empty" id="historyEmpty">${LANG[window.currentLang].noHistory}</td></tr></tbody>
       </table>
-      <div class="hint">Розрахунок зберігається після Enter у полі «Відстань» або Enter у полі заданого часу.</div>
+      <div class="hint"><span id="historyHint">Розрахунок зберігається після Enter у полі «Відстань» або Enter у полях часу.</span></div>
     </aside>
   </div>
 
   <div class="panel">
     <canvas id="chart" width="1400" height="820"></canvas>
-    <div class="hint">Наведи курсор на графік — з'явиться найближча точка з відстанню, кутом, зарядами та часом польоту.</div>
+    <div class="hint"><span id="chartHint">Наведи курсор на графік — з'явиться найближча точка з відстанню, кутом, зарядами та часом польоту.</span></div>
   </div>
 </div>
 
@@ -179,6 +195,9 @@ function autoCharges(distance){
   return Math.min(6, Math.max(1, Math.ceil(distance / 5)));
 }
 function chargeLabel(n){
+  if(window.currentLang === 'en'){
+    return n===1 ? '1 charge' : n+' charges';
+  }
   if(n===1) return '1 заряд';
   if(n>=2 && n<=4) return n+' заряди';
   return n+' зарядів';
@@ -227,8 +246,8 @@ function draw(){
   for(let a=0;a<=60;a+=1) ctx.fillText(a.toFixed(0),pad.l-10,Y(a)+5);
 
   ctx.textAlign='center';ctx.font='16px Arial';
-  ctx.fillText('Відстань, км',pad.l+pw/2,H-20);
-  ctx.save();ctx.translate(20,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('Кут гармати, °',0,0);ctx.restore();
+  ctx.fillText(window.currentLang==='en' ? 'Distance, km' : 'Відстань, км',pad.l+pw/2,H-20);
+  ctx.save();ctx.translate(20,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText(window.currentLang==='en' ? 'Gun elevation, °' : 'Кут гармати, °',0,0);ctx.restore();
 
   // Curves
   for(let n=1;n<=6;n++){
@@ -247,9 +266,9 @@ function draw(){
     const a=angleFromTime(t), yy=Y(a);
     ctx.strokeStyle='#777';ctx.lineWidth=0.6;
     ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillText(t+' s',W-pad.r+10,yy+4);
+    ctx.fillText(t+' '+(window.currentLang==='en'?'s':'с'),W-pad.r+10,yy+4);
   }
-  ctx.save();ctx.translate(W-18,pad.t+ph/2);ctx.rotate(Math.PI/2);ctx.font='16px Arial';ctx.textAlign='center';ctx.fillText('Час польоту, с',0,0);ctx.restore();
+  ctx.save();ctx.translate(W-18,pad.t+ph/2);ctx.rotate(Math.PI/2);ctx.font='16px Arial';ctx.textAlign='center';ctx.fillText(window.currentLang==='en' ? 'Flight time, s' : 'Час польоту, с',0,0);ctx.restore();
 
   // Legend
   ctx.textAlign='left';ctx.font='14px Arial';
@@ -257,7 +276,11 @@ function draw(){
     const lx=pad.l+15, ly=pad.t+18+(n-1)*22;
     ctx.strokeStyle=colors[n-1];ctx.lineWidth=3;
     ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+28,ly);ctx.stroke();
-    ctx.fillStyle='#222';ctx.fillText(n+(n===1?' заряд':' заряди'),lx+36,ly+5);
+    ctx.fillStyle='#222';
+    const chargeText = window.currentLang==='en'
+      ? n+' '+(n===1?'charge':'charges')
+      : n+(n===1?' заряд':(n<=4?' заряди':' зарядів'));
+    ctx.fillText(chargeText,lx+36,ly+5);
   }
 
   updateMarker();
@@ -329,33 +352,20 @@ function saveCalculation(distance, charges, angle, flight, targetTime=null, laun
 }
 
 function getTargetTime(){
-  const h = parseInt(document.getElementById('targetHour').value,10);
-  const m = parseInt(document.getElementById('targetMinute').value,10);
-  const s = parseInt(document.getElementById('targetSecond').value,10);
-
-  if(!Number.isFinite(h) || h<0 || h>23 ||
-     !Number.isFinite(m) || m<0 || m>59 ||
-     !Number.isFinite(s) || s<0 || s>59){
-    return null;
-  }
-  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+  const appearance=getEnemyAppearanceSeconds();
+  const minutes=Number(document.getElementById('minutesToTarget').value);
+  if(appearance===null || !Number.isFinite(minutes) || minutes<0) return null;
+  return formatGameTime(appearance+minutes*60);
 }
 
 function calculateLaunchTime(flight){
-  const targetTime = getTargetTime();
+  const targetTime=getTargetTime();
   if(!targetTime) return null;
-
-  const [h,m,s] = targetTime.split(':').map(Number);
-  let launchSeconds = h*3600 + m*60 + s - flight;
-  launchSeconds = ((launchSeconds % 86400) + 86400) % 86400;
-
-  const lh = Math.floor(launchSeconds / 3600);
-  const lm = Math.floor((launchSeconds % 3600) / 60);
-  const ls = Math.floor(launchSeconds % 60);
-
-  return `${pad2(lh)}:${pad2(lm)}:${pad2(ls)}`;
+  const [h,m,s]=targetTime.split(':').map(Number);
+  let launchSeconds=h*3600+m*60+s-flight;
+  launchSeconds=((launchSeconds%86400)+86400)%86400;
+  return formatGameTime(launchSeconds);
 }
-
 
 function saveCurrentTargetTime(){
   const d=parseFloat(document.getElementById('distance').value);
@@ -503,6 +513,130 @@ function updateMarker(){
   updateClockAndFireTime();
 }
 
+
+window.currentLang='uk';
+
+const LANG={
+uk:{
+ title:'Калькулятор наведення гармати',toggle:'🇬🇧 English',
+ chargeMode:'Автоматично за відстанню',
+ showCharges:'Показувати поле зарядів',showAngle:'Показувати поле кута',showTime:'Показувати поле часу',
+ resultDistance:'Для заданої відстані',resultAngleDistance:'Дальність при заданому куті',
+ resultAngleTime:'Час при заданому куті',resultTimeDistance:'Дальність при заданому часі',
+ chargesHint:'Кількість зарядів за замовчуванням визначається автоматично: до 5,00 км — 1 заряд, понад 5,00 км — 2, понад 10,00 км — 3 і т.д. Але її можна вручну змінити, якщо фактично зарядив іншу кількість. Максимум — 6 зарядів.',
+ fireCalc:'Калькулятор часу пострілу',enemyHour:'Година появи',enemyMinute:'Хвилина появи',enemySecond:'Секунда появи',minutesToTarget:'Хвилин до цілі',targetArrival:'Час прибуття цілі:',fireAt:'Час пострілу:',
+ fireInstruction:'Щоб снаряд упав у заданий час, постріл потрібно зробити о:',
+ fireHint:'Введи час появи ворога та кількість хвилин до моменту, коли він буде в потрібній точці. Калькулятор визначить час прибуття цілі та момент пострілу з урахуванням часу польоту снаряда.',
+ history:'Останні 5 розрахунків',historyHint:'Розрахунок зберігається після Enter у полі «Відстань» або Enter у полях часу.',
+ chartHint:'Наведи курсор на графік — з\'явиться найближча точка з відстанню, кутом, зарядами та часом польоту.',
+ noHistory:'Поки що немає розрахунків',
+ distance:'Відстань, км',charges:'Порохові заряди',angle:'Кут, °',time:'Час польоту, с', angleUnit:'кут', flightUnit:'час польоту', kmUnit:'км', secUnit:'с',
+ hDistance:'Відстань',hCharges:'Заряди',hAngle:'Кут',hLaunch:'Постріл',hFlight:'Політ'
+},
+en:{
+ title:'Artillery Aiming Calculator',toggle:'🇺🇦 Українська',
+ chargeMode:'Automatic by distance',
+ showCharges:'Show charges field',showAngle:'Show angle field',showTime:'Show flight-time field',
+ resultDistance:'For given distance',resultAngleDistance:'Range at given angle',
+ resultAngleTime:'Time at given angle',resultTimeDistance:'Range at given flight time',
+ chargesHint:'The number of charges is selected automatically: up to 5.00 km — 1 charge, over 5.00 km — 2, over 10.00 km — 3, and so on. You can change it manually if you loaded a different number. Maximum: 6 charges.',
+ fireCalc:'Shot Timing Calculator',enemyHour:'Enemy appearance hour',enemyMinute:'Enemy appearance minute',enemySecond:'Enemy appearance second',minutesToTarget:'Minutes to target',targetArrival:'Target arrival time:',fireAt:'Fire time:',
+ fireInstruction:'To make the shell land at the specified time, fire at:',
+ fireHint:'Enter when the enemy appears and how many minutes it will take to reach the required position. The calculator determines the target arrival time and when to fire based on shell flight time.',
+ history:'Last 5 calculations',historyHint:'Press Enter in the Distance field or in a target-time field to save the calculation.',
+ chartHint:'Move the cursor over the graph to see the nearest point with distance, angle, charges, and flight time.',
+ noHistory:'No calculations yet',
+ distance:'Distance, km',charges:'Powder charges',angle:'Elevation, °',time:'Flight time, s', angleUnit:'angle', flightUnit:'flight time', kmUnit:'km', secUnit:'s',
+ hDistance:'Distance',hCharges:'Charges',hAngle:'Angle',hLaunch:'Fire time',hFlight:'Flight'
+}};
+
+function applyLanguage(lang){
+  window.currentLang=lang;
+  const L=LANG[lang];
+  document.getElementById('pageTitle').textContent=L.title;
+  document.getElementById('langToggle').textContent=L.toggle;
+  document.title=L.title;
+
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  set('distanceLabel',L.distance); set('chargesLabel',L.charges); set('angleLabel',L.angle); set('timeLabel',L.time);
+  set('angleUnit',L.angleUnit); set('flightUnit',L.flightUnit); set('rangeUnit',L.kmUnit); set('timeUnit',L.secUnit); set('timeRangeUnit',L.kmUnit);
+  set('chargeModeHint',L.chargeMode); set('showChargesLabel',L.showCharges); set('showAngleLabel',L.showAngle); set('showTimeLabel',L.showTime);
+  set('resultDistanceLabel',L.resultDistance); set('resultAngleDistanceLabel',L.resultAngleDistance);
+  set('resultAngleTimeLabel',L.resultAngleTime); set('resultTimeDistanceLabel',L.resultTimeDistance);
+  set('chargesHint',L.chargesHint); set('fireCalcTitle',L.fireCalc);
+  set('enemyHourLabel',L.enemyHour); set('enemyMinuteLabel',L.enemyMinute); set('enemySecondLabel',L.enemySecond);
+  set('minutesToTargetLabel',L.minutesToTarget); set('targetArrivalLabel',L.targetArrival); set('fireAtLabel',L.fireAt);
+  set('fireHint',L.fireHint);
+  set('hDistance',L.hDistance); set('hCharges',L.hCharges); set('hAngle',L.hAngle); set('hLaunch',L.hLaunch); set('hFlight',L.hFlight); set('historyEmpty',L.noHistory);
+  set('historyTitle',L.history); set('historyHint',L.historyHint); set('chartHint',L.chartHint);
+
+  // Update the select option labels.
+  const opts=document.querySelectorAll('#charges option');
+  if(opts.length===6){
+    opts.forEach((o,i)=>o.textContent=lang==='en' ? `${i+1} ${i===0?'charge':'charges'}` : (i===0?'1 заряд':i<=3?`${i+1} заряди`:`${i+1} зарядів`));
+  }
+
+  // Update history and calculator output without replacing any calculation logic.
+  if(typeof renderHistory==='function') renderHistory();
+  if(typeof updateClockAndFireTime==='function') updateClockAndFireTime();
+  if(typeof draw==='function') draw();
+}
+
+document.getElementById('langToggle').addEventListener('click',()=>{
+  applyLanguage(window.currentLang==='uk'?'en':'uk');
+});
+
+// Translate dynamic messages generated by the original calculator.
+const _validateInputs=validateInputs;
+validateInputs=function(){
+  const ok=_validateInputs();
+  if(window.currentLang==='en'){
+    const box=document.getElementById('errorBox');
+    if(box && box.classList.contains('show')){
+      let s=box.textContent;
+
+      // Static validation messages.
+      s=s.replace(/Введи відстань\./g,'Enter a distance.')
+       .replace(/Відстань повинна бути від 0 до 30 км\./g,'Distance must be between 0 and 30 km.')
+       .replace(/Кількість порохових зарядів повинна бути від 1 до 6\./g,'Powder charges must be between 1 and 6.')
+       .replace(/Введи кут\./g,'Enter an angle.')
+       .replace(/Кут повинен бути від 0° до 60°\./g,'Angle must be between 0° and 60°.')
+       .replace(/Введи час польоту\./g,'Enter a flight time.')
+       .replace(/Час польоту повинен бути від 0 до 38 с\./g,'Flight time must be between 0 and 38 s.')
+       .replace(/Перевір заданий час\./g,'Check the specified time.')
+       .replace(/Спочатку введи коректну відстань і кількість зарядів\./g,'First enter a valid distance and number of charges.');
+
+      // Dynamic charge/range validation.
+      s=s.replace(
+        /Для\s+(\d+)\s+(?:заряду|зарядів)\s+максимальна дальність\s*[—-]\s*([\d.,]+)\s*км\.\s*Для\s*([\d.,]+)\s*км\s*потрібно\s*щонайменше\s*(\d+)\s*зарядів?\./g,
+        function(_,n,maxDistance,distance,minCharges){
+          return 'For '+n+' '+(Number(n)===1?'charge':'charges')+
+            ', maximum range is '+maxDistance+' km. For '+distance+
+            ' km, at least '+minCharges+' charges are required.';
+        }
+      );
+
+      box.textContent=s;
+    }
+  }
+  return ok;
+};
+
+// Wrap the existing render/update functions so their generated text is followed
+// by the selected language. The underlying calculation code remains untouched.
+const _renderHistory=renderHistory;
+renderHistory=function(){
+  _renderHistory();
+  if(window.currentLang==='en'){
+    const body=document.getElementById('historyBody');
+    if(!calculationHistory.length) return;
+    body.querySelectorAll('td').forEach(td=>{td.textContent=td.textContent.replace(' км',' km').replace(' с',' s').replace('заряд','charge').replace('заряди','charges').replace('зарядів','charges');});
+  }
+};
+
+const _draw=draw;
+draw=function(){ _draw(); };
+
 document.getElementById('distance').addEventListener('input', draw);
 document.getElementById('angle').addEventListener('input', draw);
 document.getElementById('time').addEventListener('input', draw);
@@ -568,56 +702,73 @@ canvas.addEventListener('mousemove',e=>{
 
 function pad2(n){ return String(Math.floor(n)).padStart(2,'0'); }
 
-function updateClockAndFireTime(){
-  const d = parseFloat(document.getElementById('distance').value);
-  const n = currentCharges();
-
-  if(!Number.isFinite(d) || d < 0 || d > 30 || !Number.isFinite(n) || n < 1 || n > 6 || d > 5*n){
-    document.getElementById('fireTime').textContent = '—';
-    document.getElementById('fireDetails').textContent =
-      'Спочатку введи коректну відстань і кількість зарядів.';
-    return;
-  }
-
-  const angle = angleFromDistance(d,n);
-  const flight = timeFromAngle(angle);
-
-  const h = parseInt(document.getElementById('targetHour').value,10);
-  const m = parseInt(document.getElementById('targetMinute').value,10);
-  const s = parseInt(document.getElementById('targetSecond').value,10);
-
-  if(!Number.isFinite(h) || h<0 || h>23 ||
-     !Number.isFinite(m) || m<0 || m>59 ||
-     !Number.isFinite(s) || s<0 || s>59){
-    document.getElementById('fireTime').textContent = 'Помилка';
-    document.getElementById('fireDetails').textContent = 'Перевір заданий час.';
-    return;
-  }
-
-  const totalTargetSeconds = h*3600 + m*60 + s;
-  let fireSeconds = totalTargetSeconds - flight;
-  fireSeconds = ((fireSeconds % 86400) + 86400) % 86400;
-
-  const fireH = Math.floor(fireSeconds / 3600);
-  const fireM = Math.floor((fireSeconds % 3600) / 60);
-  const fireS = Math.floor(fireSeconds % 60);
-
-  document.getElementById('fireTime').textContent =
-    `${pad2(fireH)}:${pad2(fireM)}:${pad2(fireS)}`;
-
-  document.getElementById('fireDetails').textContent =
-    `Час польоту: ${flight.toFixed(1)} с • Кут: ${angle.toFixed(2)}° • ${chargeLabel(n)}`;
+function getEnemyAppearanceSeconds(){
+  const h=Number(document.getElementById('enemyHour').value);
+  const m=Number(document.getElementById('enemyMinute').value);
+  const s=Number(document.getElementById('enemySecond').value);
+  if(!Number.isFinite(h)||!Number.isFinite(m)||!Number.isFinite(s) ||
+     h<0||h>23||m<0||m>59||s<0||s>59) return null;
+  return h*3600+m*60+s;
 }
 
-['targetHour','targetMinute','targetSecond'].forEach(id=>{
+function formatGameTime(totalSeconds){
+  totalSeconds=((totalSeconds%86400)+86400)%86400;
+  const h=Math.floor(totalSeconds/3600);
+  const m=Math.floor((totalSeconds%3600)/60);
+  const s=Math.floor(totalSeconds%60);
+  return [h,m,s].map(v=>String(v).padStart(2,'0')).join(':');
+}
+
+function updateClockAndFireTime(){
+  const d=parseFloat(document.getElementById('distance').value);
+  const n=currentCharges();
+  const appearance=getEnemyAppearanceSeconds();
+  const minutes=Number(document.getElementById('minutesToTarget').value);
+
+  const targetEl=document.getElementById('targetArrivalTime');
+  const fireEl=document.getElementById('fireTime');
+  const details=document.getElementById('fireDetails');
+
+  if(!Number.isFinite(d)||d<0||d>30||!Number.isFinite(n)||n<1||n>6||d>5*n){
+    targetEl.textContent='--:--:--';
+    fireEl.textContent='—';
+    details.textContent=window.currentLang==='en'
+      ? 'First enter a valid distance and number of charges.'
+      : 'Спочатку введи коректну відстань і кількість зарядів.';
+    return;
+  }
+
+  if(appearance===null || !Number.isFinite(minutes) || minutes<0){
+    targetEl.textContent='--:--:--';
+    fireEl.textContent='—';
+    details.textContent=window.currentLang==='en'
+      ? 'Enter a valid enemy appearance time and minutes to target.'
+      : 'Введи коректний час появи ворога та кількість хвилин до цілі.';
+    return;
+  }
+
+  const angle=angleFromDistance(d,n);
+  const flight=timeFromAngle(angle);
+  const targetSeconds=appearance+minutes*60;
+  const fireSeconds=targetSeconds-flight;
+
+  targetEl.textContent=formatGameTime(targetSeconds);
+  fireEl.textContent=formatGameTime(fireSeconds);
+  details.textContent=(window.currentLang==='en'?'Flight time: ':'Час польоту: ')+flight.toFixed(1)+' '+(window.currentLang==='en'?'s':'с')+
+    ' • '+(window.currentLang==='en'?'Angle: ':'Кут: ')+angle.toFixed(2)+'° • '+chargeLabel(n);
+}
+
+['enemyHour','enemyMinute','enemySecond','minutesToTarget'].forEach(id=>{
   const el=document.getElementById(id);
-  el.addEventListener('input', updateClockAndFireTime);
-  el.addEventListener('change', updateClockAndFireTime);
-  el.addEventListener('keydown', (e)=>{
-    if(e.key==='Enter'){
-      e.preventDefault();
-      saveCurrentTargetTime();
-    }
+  el.addEventListener('input',updateClockAndFireTime);
+  el.addEventListener('change',updateClockAndFireTime);
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();updateClockAndFireTime();}
+  });
+});
+['enemyHour','enemyMinute','enemySecond','minutesToTarget'].forEach(id=>{
+  document.getElementById(id).addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();saveCurrentTargetTime();}
   });
 });
 
