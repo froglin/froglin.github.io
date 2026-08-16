@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор наведення гармати</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 0; background:#f4f4f4; color:#222; }
+  .wrap { max-width: 1400px; margin: 20px auto; padding: 0 18px; }
+  h1 { margin: 0 0 12px; }
+  .panel { background:white; padding:16px; border-radius:10px; box-shadow:0 2px 10px #0001; margin-bottom:14px; }
+  .controls { display:grid; grid-template-columns: repeat(4, minmax(150px,1fr)); gap:12px; }
+  label { font-weight:600; display:block; margin-bottom:5px; }
+  .toggles { display:flex; flex-wrap:wrap; gap:14px; margin-top:12px; padding-top:12px; border-top:1px solid #ddd; }
+  .toggle { display:flex; align-items:center; gap:7px; font-weight:normal; cursor:pointer; }
+  .toggle input { width:auto; }
+  input, select { width:100%; box-sizing:border-box; padding:9px; font-size:16px; border:1px solid #bbb; border-radius:6px; }
+  input[type=range] { padding:0; }
+  .results { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:12px; }
+  .result { background:#f7f7f7; padding:12px; border-radius:7px; }
+  .result b { font-size:22px; display:block; margin-top:3px; }
+  .history { background:#f7f7f7; border:1px solid #ddd; border-radius:8px; padding:14px; }
+  .history h2 { margin:0 0 10px; font-size:18px; }
+  .history table { width:100%; border-collapse:collapse; font-size:14px; }
+  .history th, .history td { padding:7px 5px; border-bottom:1px solid #ddd; text-align:right; }
+  .history th:first-child, .history td:first-child { text-align:left; }
+  .history .empty { color:#777; text-align:center; padding:14px 4px; }
+  canvas { width:100%; height:auto; background:white; border-radius:8px; cursor:crosshair; }
+  .hint { color:#555; font-size:14px; margin-top:8px; }
+  .field-error { border:2px solid #d32f2f !important; background:#fff0f0 !important; }
+  .field-label-error { color:#d32f2f !important; }
+  .error-box { display:none; margin-top:12px; padding:11px 13px; border-radius:7px; background:#fff0f0; border:1px solid #d32f2f; color:#b71c1c; font-weight:600; }
+  .error-box.show { display:block; }
+  .time-panel { margin-top:14px; }
+  .time-controls { display:grid; grid-template-columns:repeat(3, minmax(110px,1fr)); gap:10px; }
+  .fire-result { margin-top:12px; padding:14px; background:#f7f7f7; border-radius:7px; }
+  .fire-result b { font-size:28px; display:block; margin-top:4px; }
+  @media(max-width:700px){ .time-controls{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:1100px){ .history{width:auto;} }
+  @media(max-width:900px){ .controls,.results{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:600px){ .controls,.results{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>Калькулятор наведення гармати</h1>
+    <div class="controls">
+      <div id="distanceField">
+        <label id="distanceLabel" for="distance">Відстань, км</label>
+        <input id="distance" type="number" min="0" max="30" step="0.01" value="20.00">
+      </div>
+      <div id="chargesField">
+        <label id="chargesLabel" for="charges">Порохові заряди</label>
+        <select id="charges">
+          <option value="1">1 заряд</option>
+          <option value="2">2 заряди</option>
+          <option value="3">3 заряди</option>
+          <option value="4">4 заряди</option>
+          <option value="5">5 зарядів</option>
+          <option value="6">6 зарядів</option>
+        </select>
+        <div id="chargeModeHint" class="hint" style="margin-top:5px">Автоматично за відстанню</div>
+      </div>
+      <div id="angleField">
+        <label id="angleLabel" for="angle">Кут, °</label>
+        <input id="angle" type="number" min="0" max="60" step="0.01" value="48.00">
+      </div>
+      <div id="timeField">
+        <label id="timeLabel" for="time">Час польоту, с</label>
+        <input id="time" type="number" min="0" max="38" step="1" value="31">
+      </div>
+    </div>
+    <div class="toggles">
+      <label class="toggle"><input id="showCharges" type="checkbox" checked> Показувати поле зарядів</label>
+      <label class="toggle"><input id="showAngle" type="checkbox" checked> Показувати поле кута</label>
+      <label class="toggle"><input id="showTime" type="checkbox" checked> Показувати поле часу</label>
+    </div>
+    <div id="errorBox" class="error-box"></div>
+    <div class="results">
+      <div class="result">Для заданої відстані
+        <b id="rAngle">—</b>кут
+        <b id="rDistanceTime" style="margin-top:8px">—</b>час польоту
+      </div>
+      <div class="result" id="angleDistanceResult">Дальність при заданому куті<b id="rDistance">—</b>км</div>
+      <div class="result" id="angleTimeResult">Час при заданому куті<b id="rTime">—</b>с</div>
+      <div class="result" id="timeDistanceResult">Дальність при заданому часі<b id="rTimeDistance">—</b>км</div>
+    </div>
+    <div class="hint">
+      Кількість зарядів за замовчуванням визначається автоматично: до 5,00 км — 1 заряд,
+      понад 5,00 км — 2, понад 10,00 км — 3 і т.д. Але її можна вручну змінити, якщо
+      фактично зарядив іншу кількість. Максимум — 6 зарядів.
+    </div>
+  </div>
+
+
+  <div class="panel time-panel">
+    <h2 style="margin-top:0">Калькулятор часу пострілу</h2>
+    <div class="time-controls">
+      <div>
+        <label for="targetHour">Година</label>
+        <input id="targetHour" type="number" min="0" max="23" step="1" value="12">
+      </div>
+      <div>
+        <label for="targetMinute">Хвилина</label>
+        <input id="targetMinute" type="number" min="0" max="59" step="1" value="00">
+      </div>
+      <div>
+        <label for="targetSecond">Секунда</label>
+        <input id="targetSecond" type="number" min="0" max="59" step="1" value="00">
+      </div>
+    </div>
+    <div class="clock-box">
+      Поточний час:
+      <b id="currentClock">--:--:--</b>
+    </div>
+    <div class="fire-result">
+      Щоб снаряд упав у заданий час, постріл потрібно зробити о:
+      <b id="fireTime">--:--:--</b>
+      <div class="hint" id="fireDetails">Час польоту: —</div>
+    </div>
+    <div class="hint">
+      Вводь час падіння так, як він показаний у грі. Калькулятор віднімає час польоту
+      від заданого часу та показує момент пострілу.
+    </div>
+  </div>
+
+  <div class="panel">
+    <aside class="history">
+      <h2>Останні 5 розрахунків</h2>
+      <table>
+        <thead><tr><th>Відстань</th><th>Заряди</th><th>Кут</th><th>Постріл</th><th>Політ</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="5" class="empty">Поки що немає розрахунків</td></tr></tbody>
+      </table>
+      <div class="hint">Розрахунок зберігається після Enter у полі «Відстань» або Enter у полі заданого часу.</div>
+    </aside>
+  </div>
+
+  <div class="panel">
+    <canvas id="chart" width="1400" height="820"></canvas>
+    <div class="hint">Наведи курсор на графік — з'явиться найближча точка з відстанню, кутом, зарядами та часом польоту.</div>
+  </div>
+</div>
+
+<script>
+const canvas=document.getElementById('chart'), ctx=canvas.getContext('2d');
+const W=canvas.width,H=canvas.height;
+const pad={l:75,r:95,t:45,b:65};
+const pw=W-pad.l-pad.r, ph=H-pad.t-pad.b;
+
+const colors=['#1976d2','#ef6c00','#2e9d35','#d62728','#8e63c7','#8b5a44'];
+
+// Часова шкала без калібрування за вимірюваннями користувача.
+// Взята прямо з оригінального довідкового графіка гри.
+const calA=[0,5,10,15,20,25,30,35,40,45,50,55,60];
+const calT=[0,3,6,11,13,16,19,22,25,29,32,35,38];
+
+function interp(x,xs,ys){
+  if(x<=xs[0]){
+    return ys[0]+(x-xs[0])*(ys[1]-ys[0])/(xs[1]-xs[0]);
+  }
+  for(let i=1;i<xs.length;i++){
+    if(x<=xs[i]) return ys[i-1]+(x-xs[i-1])*(ys[i]-ys[i-1])/(xs[i]-xs[i-1]);
+  }
+  return ys[ys.length-1];
+}
+function timeFromAngle(a){ return interp(a,calA,calT); }
+function angleFromTime(t){ return interp(t,calT,calA); }
+function angleFromDistance(d,n){ return d*12/n; }
+function distanceFromAngle(a,n){ return a*n/12; }
+
+function X(d){return pad.l+d/30*pw}
+function Y(a){return pad.t+(60-a)/60*ph}
+function xVal(px){return (px-pad.l)/pw*30}
+function yVal(py){return 60-(py-pad.t)/ph*60}
+
+function autoCharges(distance){
+  if (!Number.isFinite(distance) || distance <= 0) return 1;
+  return Math.min(6, Math.max(1, Math.ceil(distance / 5)));
+}
+function chargeLabel(n){
+  if(n===1) return '1 заряд';
+  if(n>=2 && n<=4) return n+' заряди';
+  return n+' зарядів';
+}
+function setChargeFromDistance(){
+  const d=parseFloat(document.getElementById('distance').value);
+  const n=autoCharges(Number.isFinite(d)?Math.max(0,Math.min(30,d)):0);
+  document.getElementById('charges').value=String(n);
+  document.getElementById('chargeModeHint').textContent='Автоматично за відстанню';
+}
+function currentCharges(){
+  const el=document.getElementById('charges');
+  const d=parseFloat(document.getElementById('distance').value);
+  const automatic=autoCharges(Number.isFinite(d)?Math.max(0,Math.min(30,d)):0);
+  const selected=parseInt(el.value,10);
+  return Number.isFinite(selected) ? selected : automatic;
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+
+  // Grid: 0.5 km major, 0.1 km minor; 1 degree major.
+  ctx.lineWidth=1;
+  for(let d=0;d<=30.0001;d+=0.1){
+    const xx=X(d);
+    ctx.strokeStyle=(Math.round(d*10)%5===0)?'#bbb':'#e5e5e5';
+    ctx.lineWidth=(Math.round(d*10)%5===0)?1:0.5;
+    ctx.beginPath();ctx.moveTo(xx,pad.t);ctx.lineTo(xx,H-pad.b);ctx.stroke();
+  }
+  for(let a=0;a<=60;a+=1){
+    const yy=Y(a);
+    ctx.strokeStyle=(a%5===0)?'#aaa':'#e7e7e7';
+    ctx.lineWidth=(a%5===0)?1:0.5;
+    ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle='#222';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t);ctx.lineTo(pad.l,H-pad.b);ctx.lineTo(W-pad.r,H-pad.b);ctx.stroke();
+
+  ctx.fillStyle='#222';ctx.font='14px Arial';
+  ctx.textAlign='center';
+  for(let d=0;d<=30;d+=1) ctx.fillText(d.toFixed(0),X(d),H-pad.b+24);
+  ctx.textAlign='right';
+  for(let a=0;a<=60;a+=1) ctx.fillText(a.toFixed(0),pad.l-10,Y(a)+5);
+
+  ctx.textAlign='center';ctx.font='16px Arial';
+  ctx.fillText('Відстань, км',pad.l+pw/2,H-20);
+  ctx.save();ctx.translate(20,pad.t+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('Кут гармати, °',0,0);ctx.restore();
+
+  // Curves
+  for(let n=1;n<=6;n++){
+    ctx.strokeStyle=colors[n-1];ctx.lineWidth=3;
+    ctx.beginPath();
+    for(let d=0;d<=5*n;d+=0.01){
+      const a=angleFromDistance(d,n), xx=X(d), yy=Y(a);
+      if(d===0)ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+    }
+    ctx.stroke();
+  }
+
+  // Right time scale (1 sec ticks)
+  ctx.textAlign='left';ctx.font='13px Arial';ctx.fillStyle='#222';
+  for(let t=0;t<=38;t++){
+    const a=angleFromTime(t), yy=Y(a);
+    ctx.strokeStyle='#777';ctx.lineWidth=0.6;
+    ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(W-pad.r,yy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillText(t+' s',W-pad.r+10,yy+4);
+  }
+  ctx.save();ctx.translate(W-18,pad.t+ph/2);ctx.rotate(Math.PI/2);ctx.font='16px Arial';ctx.textAlign='center';ctx.fillText('Час польоту, с',0,0);ctx.restore();
+
+  // Legend
+  ctx.textAlign='left';ctx.font='14px Arial';
+  for(let n=1;n<=6;n++){
+    const lx=pad.l+15, ly=pad.t+18+(n-1)*22;
+    ctx.strokeStyle=colors[n-1];ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+28,ly);ctx.stroke();
+    ctx.fillStyle='#222';ctx.fillText(n+(n===1?' заряд':' заряди'),lx+36,ly+5);
+  }
+
+  updateMarker();
+}
+
+let calculationHistory = JSON.parse(localStorage.getItem('garmaCalculationHistory') || '[]');
+
+// Нормалізація старих записів історії, створених попередніми версіями.
+calculationHistory = calculationHistory
+  .filter(item => item && Number.isFinite(Number(item.distance)) && Number.isFinite(Number(item.charges)))
+  .map(item => {
+    const distance = Number(item.distance);
+    const charges = Number(item.charges);
+    const angle = Number.isFinite(Number(item.angle))
+      ? Number(item.angle)
+      : angleFromDistance(distance, charges);
+    const flight = Number.isFinite(Number(item.flight))
+      ? Number(item.flight)
+      : (Number.isFinite(Number(item.time)) ? Number(item.time) : timeFromAngle(angle));
+    return {
+      distance,
+      charges,
+      angle,
+      flight,
+      targetTime: item.targetTime || null,
+      launchTime: item.launchTime || null
+    };
+  })
+  .slice(0,5);
+
+localStorage.setItem('garmaCalculationHistory', JSON.stringify(calculationHistory));
+
+function renderHistory(){
+  const body=document.getElementById('historyBody');
+  if(!calculationHistory.length){
+    body.innerHTML='<tr><td colspan="5" class="empty">Поки що немає розрахунків</td></tr>';
+    return;
+  }
+  body.innerHTML=calculationHistory.map(item =>
+    `<tr>
+      <td>${Number(item.distance).toFixed(2)} км</td>
+      <td>${item.charges}</td>
+      <td>${Number(item.angle).toFixed(2)}°</td>
+      <td>${item.launchTime || '—'}</td>
+      <td>${Number(item.flight).toFixed(1)} с</td>
+    </tr>`
+  ).join('');
+}
+
+function saveCalculation(distance, charges, angle, flight, targetTime=null, launchTime=null){
+  const last=calculationHistory[0];
+  if(last &&
+     Math.abs(last.distance-distance)<0.000001 &&
+     last.charges===charges &&
+     last.targetTime===targetTime &&
+     last.launchTime===launchTime) return;
+
+  calculationHistory.unshift({
+    distance,
+    charges,
+    angle,
+    flight,
+    targetTime,
+    launchTime
+  });
+  calculationHistory=calculationHistory.slice(0,5);
+  localStorage.setItem('garmaCalculationHistory', JSON.stringify(calculationHistory));
+  renderHistory();
+}
+
+function getTargetTime(){
+  const h = parseInt(document.getElementById('targetHour').value,10);
+  const m = parseInt(document.getElementById('targetMinute').value,10);
+  const s = parseInt(document.getElementById('targetSecond').value,10);
+
+  if(!Number.isFinite(h) || h<0 || h>23 ||
+     !Number.isFinite(m) || m<0 || m>59 ||
+     !Number.isFinite(s) || s<0 || s>59){
+    return null;
+  }
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
+}
+
+function calculateLaunchTime(flight){
+  const targetTime = getTargetTime();
+  if(!targetTime) return null;
+
+  const [h,m,s] = targetTime.split(':').map(Number);
+  let launchSeconds = h*3600 + m*60 + s - flight;
+  launchSeconds = ((launchSeconds % 86400) + 86400) % 86400;
+
+  const lh = Math.floor(launchSeconds / 3600);
+  const lm = Math.floor((launchSeconds % 3600) / 60);
+  const ls = Math.floor(launchSeconds % 60);
+
+  return `${pad2(lh)}:${pad2(lm)}:${pad2(ls)}`;
+}
+
+
+function saveCurrentTargetTime(){
+  const d=parseFloat(document.getElementById('distance').value);
+  const n=currentCharges();
+  const targetTime=getTargetTime();
+
+  if(!Number.isFinite(d) || d<0 || d>30 || !Number.isFinite(n) || n<1 || n>6 || d>5*n || !targetTime){
+    validateInputs();
+    return;
+  }
+
+  const angle=angleFromDistance(d,n);
+  const flight=timeFromAngle(angle);
+  const launchTime=calculateLaunchTime(flight);
+
+  saveCalculation(d,n,angle,flight,targetTime,launchTime);
+  renderHistory();
+}
+
+function commitDistance(){
+  const input = document.getElementById('distance');
+  const value = parseFloat(input.value);
+
+  if(!Number.isFinite(value)) { validateInputs(); return; }
+  const currentCharge = parseInt(document.getElementById('charges').value,10);
+  if(value<0 || value>30 || !Number.isFinite(currentCharge) || value>5*currentCharge){
+    validateInputs();
+    return;
+  }
+  const d = Math.max(0, Math.min(30, value));
+  input.value = d.toFixed(2);
+
+  const hint=document.getElementById('chargeModeHint');
+  if(hint && hint.textContent==='Автоматично за відстанню') setChargeFromDistance();
+  const n = currentCharges();
+  const a = angleFromDistance(d,n);
+  const t = timeFromAngle(a);
+
+  committedDistance = d;
+  saveCalculation(d, n, a, t, getTargetTime(), calculateLaunchTime(t));
+  draw();
+}
+
+
+function clearFieldError(id, labelId){
+  const el=document.getElementById(id);
+  const label=document.getElementById(labelId);
+  if(el) el.classList.remove('field-error');
+  if(label) label.classList.remove('field-label-error');
+}
+function setFieldError(id, labelId){
+  const el=document.getElementById(id);
+  const label=document.getElementById(labelId);
+  if(el) el.classList.add('field-error');
+  if(label) label.classList.add('field-label-error');
+}
+
+function validateInputs(){
+  const errors=[];
+  const d=parseFloat(document.getElementById('distance').value);
+  const n=parseInt(document.getElementById('charges').value,10);
+  const a=parseFloat(document.getElementById('angle').value);
+  const t=parseFloat(document.getElementById('time').value);
+
+  ['distance','charges','angle','time'].forEach((id)=>{
+    const labelMap={distance:'distanceLabel',charges:'chargesLabel',angle:'angleLabel',time:'timeLabel'};
+    clearFieldError(id,labelMap[id]);
+  });
+
+  if(!Number.isFinite(d)){
+    errors.push('Введи відстань.');
+    setFieldError('distance','distanceLabel');
+  } else if(d<0 || d>30){
+    errors.push('Відстань повинна бути від 0 до 30 км.');
+    setFieldError('distance','distanceLabel');
+  }
+
+  if(!Number.isFinite(n) || n<1 || n>6){
+    errors.push('Кількість порохових зарядів повинна бути від 1 до 6.');
+    setFieldError('charges','chargesLabel');
+  } else if(Number.isFinite(d) && d>5*n){
+    errors.push(`Для ${n} ${n===1?'заряду':'зарядів'} максимальна дальність — ${(5*n).toFixed(2)} км. Для ${d.toFixed(2)} км потрібно щонайменше ${autoCharges(d)} зарядів.`);
+    setFieldError('charges','chargesLabel');
+  }
+
+  if(!Number.isFinite(a)){
+    errors.push('Введи кут.');
+    setFieldError('angle','angleLabel');
+  } else if(a<0 || a>60){
+    errors.push('Кут повинен бути від 0° до 60°.');
+    setFieldError('angle','angleLabel');
+  }
+
+  if(!Number.isFinite(t)){
+    errors.push('Введи час польоту.');
+    setFieldError('time','timeLabel');
+  } else if(t<0 || t>38){
+    errors.push('Час польоту повинен бути від 0 до 38 с.');
+    setFieldError('time','timeLabel');
+  }
+
+  const box=document.getElementById('errorBox');
+  if(errors.length){
+    box.textContent=errors.join(' ');
+    box.classList.add('show');
+  } else {
+    box.textContent='';
+    box.classList.remove('show');
+  }
+  return errors.length===0;
+}
+
+function updateMarker(){
+  validateInputs();
+  const dInput=parseFloat(document.getElementById('distance').value);
+  const dRaw=Number.isFinite(dInput)?Math.max(0,Math.min(30,dInput)):0;
+  const n=currentCharges();
+
+  const a=angleFromDistance(dRaw,n);
+  const t=timeFromAngle(a);
+
+  document.getElementById('rAngle').textContent=a.toFixed(2)+'°';
+  document.getElementById('rDistanceTime').textContent=t.toFixed(1)+' с';
+  const inputAngle=parseFloat(document.getElementById('angle').value)||0;
+  document.getElementById('rDistance').textContent=distanceFromAngle(inputAngle,n).toFixed(2);
+  document.getElementById('rTime').textContent=timeFromAngle(inputAngle).toFixed(1);
+
+  const tt=Math.max(0,Math.min(38,parseFloat(document.getElementById('time').value)||0));
+  const ta=angleFromTime(tt);
+  document.getElementById('rTimeDistance').textContent=distanceFromAngle(ta,n).toFixed(2);
+
+  // Історія зберігається лише після Enter у полі відстані.
+
+  // Highlight selected distance / automatically selected charge.
+  ctx.fillStyle='#111';
+  ctx.beginPath();ctx.arc(X(dRaw),Y(a),7,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+
+  ctx.font='bold 14px Arial';ctx.textAlign='left';
+  const text=`${dRaw.toFixed(2)} км | ${chargeLabel(n)} | ${a.toFixed(2)}° | ≈ ${t.toFixed(1)} с`;
+  const tx=Math.min(X(dRaw)+12,W-pad.r-280), ty=Math.max(pad.t+20,Y(a)-12);
+  ctx.fillStyle='white';ctx.fillRect(tx-4,ty-17,285,24);
+  ctx.strokeStyle='#555';ctx.strokeRect(tx-4,ty-17,285,24);
+  ctx.fillStyle='#111';ctx.fillText(text,tx,ty);
+  updateClockAndFireTime();
+}
+
+document.getElementById('distance').addEventListener('input', draw);
+document.getElementById('angle').addEventListener('input', draw);
+document.getElementById('time').addEventListener('input', draw);
+document.getElementById('charges').addEventListener('change', ()=>{
+  document.getElementById('chargeModeHint').textContent='Встановлено вручну';
+  draw();
+  validateInputs();
+});
+
+document.getElementById('distance').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    commitDistance();
+  }
+});
+
+function setupVisibilityToggle(checkId, fieldId){
+  const checkbox=document.getElementById(checkId);
+  const field=document.getElementById(fieldId);
+  checkbox.addEventListener('change',()=>{
+    field.style.display=checkbox.checked ? '' : 'none';
+  });
+}
+setupVisibilityToggle('showCharges','chargesField');
+setupVisibilityToggle('showAngle','angleField');
+setupVisibilityToggle('showTime','timeField');
+
+function setupResultVisibility(){
+  const angleOn=document.getElementById('showAngle').checked;
+  const timeOn=document.getElementById('showTime').checked;
+  document.getElementById('angleDistanceResult').style.display=angleOn ? '' : 'none';
+  document.getElementById('angleTimeResult').style.display=angleOn ? '' : 'none';
+  document.getElementById('timeDistanceResult').style.display=timeOn ? '' : 'none';
+}
+['showAngle','showTime'].forEach(id=>document.getElementById(id).addEventListener('change',setupResultVisibility));
+setupResultVisibility();
+renderHistory();
+
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  const px=(e.clientX-r.left)*canvas.width/r.width;
+  const py=(e.clientY-r.top)*canvas.height/r.height;
+  if(px<pad.l||px>W-pad.r||py<pad.t||py>H-pad.b){draw();return;}
+  const d=xVal(px), a=yVal(py);
+  let best={err:1e9,n:autoCharges(d),dd:Math.min(5*autoCharges(d),Math.max(0,d)),aa:0};
+  {
+    const n=autoCharges(d);
+    const dd=Math.max(0,Math.min(5*n,d));
+    const aa=angleFromDistance(dd,n);
+    best={err:Math.abs(aa-a),n,dd,aa};
+  }
+  draw();
+  ctx.fillStyle='#111';ctx.beginPath();ctx.arc(X(best.dd),Y(best.aa),6,0,Math.PI*2);ctx.fill();
+  const tt=timeFromAngle(best.aa);
+  ctx.font='bold 14px Arial';ctx.textAlign='left';
+  const text=`${best.dd.toFixed(2)} км | ${chargeLabel(best.n)} | ${best.aa.toFixed(2)}° | ≈ ${tt.toFixed(1)} с`;
+  const tx=Math.min(X(best.dd)+12,W-pad.r-280),ty=Math.max(pad.t+20,Y(best.aa)-12);
+  ctx.fillStyle='white';ctx.fillRect(tx-4,ty-17,285,24);
+  ctx.strokeStyle='#555';ctx.strokeRect(tx-4,ty-17,285,24);
+  ctx.fillStyle='#111';ctx.fillText(text,tx,ty);
+});
+
+
+function pad2(n){ return String(Math.floor(n)).padStart(2,'0'); }
+
+function updateClockAndFireTime(){
+  const d = parseFloat(document.getElementById('distance').value);
+  const n = currentCharges();
+
+  if(!Number.isFinite(d) || d < 0 || d > 30 || !Number.isFinite(n) || n < 1 || n > 6 || d > 5*n){
+    document.getElementById('fireTime').textContent = '—';
+    document.getElementById('fireDetails').textContent =
+      'Спочатку введи коректну відстань і кількість зарядів.';
+    return;
+  }
+
+  const angle = angleFromDistance(d,n);
+  const flight = timeFromAngle(angle);
+
+  const h = parseInt(document.getElementById('targetHour').value,10);
+  const m = parseInt(document.getElementById('targetMinute').value,10);
+  const s = parseInt(document.getElementById('targetSecond').value,10);
+
+  if(!Number.isFinite(h) || h<0 || h>23 ||
+     !Number.isFinite(m) || m<0 || m>59 ||
+     !Number.isFinite(s) || s<0 || s>59){
+    document.getElementById('fireTime').textContent = 'Помилка';
+    document.getElementById('fireDetails').textContent = 'Перевір заданий час.';
+    return;
+  }
+
+  const totalTargetSeconds = h*3600 + m*60 + s;
+  let fireSeconds = totalTargetSeconds - flight;
+  fireSeconds = ((fireSeconds % 86400) + 86400) % 86400;
+
+  const fireH = Math.floor(fireSeconds / 3600);
+  const fireM = Math.floor((fireSeconds % 3600) / 60);
+  const fireS = Math.floor(fireSeconds % 60);
+
+  document.getElementById('fireTime').textContent =
+    `${pad2(fireH)}:${pad2(fireM)}:${pad2(fireS)}`;
+
+  document.getElementById('fireDetails').textContent =
+    `Час польоту: ${flight.toFixed(1)} с • Кут: ${angle.toFixed(2)}° • ${chargeLabel(n)}`;
+}
+
+['targetHour','targetMinute','targetSecond'].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener('input', updateClockAndFireTime);
+  el.addEventListener('change', updateClockAndFireTime);
+  el.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      saveCurrentTargetTime();
+    }
+  });
+});
+
+updateClockAndFireTime();
+
+draw();
+</script>
+</body>
+</html>
