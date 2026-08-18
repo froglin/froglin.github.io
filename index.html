@@ -67,7 +67,7 @@
           <option value="5">5 зарядів</option>
           <option value="6">6 зарядів</option>
         </select>
-        <div id="chargeModeHint" class="hint" style="margin-top:5px"><span id="chargeModeHint">Автоматично за відстанню</span></div>
+        <div class="hint" style="margin-top:5px"><span id="chargeModeHint">Автоматично за відстанню</span></div>
       </div>
       <div id="angleField">
         <label id="angleLabel" for="angle">Кут, °</label>
@@ -202,6 +202,8 @@ function chargeLabel(n){
   if(n>=2 && n<=4) return n+' заряди';
   return n+' зарядів';
 }
+let chargesManuallySet = false;
+
 function setChargeFromDistance(){
   const d=parseFloat(document.getElementById('distance').value);
   const n=autoCharges(Number.isFinite(d)?Math.max(0,Math.min(30,d)):0);
@@ -213,7 +215,7 @@ function currentCharges(){
   const d=parseFloat(document.getElementById('distance').value);
   const automatic=autoCharges(Number.isFinite(d)?Math.max(0,Math.min(30,d)):0);
   const selected=parseInt(el.value,10);
-  return Number.isFinite(selected) ? selected : automatic;
+  return chargesManuallySet && Number.isFinite(selected) ? selected : automatic;
 }
 
 function draw(){
@@ -398,8 +400,7 @@ function commitDistance(){
   const d = Math.max(0, Math.min(30, value));
   input.value = d.toFixed(2);
 
-  const hint=document.getElementById('chargeModeHint');
-  if(hint && hint.textContent==='Автоматично за відстанню') setChargeFromDistance();
+  if(!chargesManuallySet) setChargeFromDistance();
   const n = currentCharges();
   const a = angleFromDistance(d,n);
   const t = timeFromAngle(a);
@@ -637,11 +638,26 @@ renderHistory=function(){
 const _draw=draw;
 draw=function(){ _draw(); };
 
-document.getElementById('distance').addEventListener('input', draw);
+document.getElementById('distance').addEventListener('input', ()=>{
+  if(!chargesManuallySet) setChargeFromDistance();
+  draw();
+  validateInputs();
+});
 document.getElementById('angle').addEventListener('input', draw);
 document.getElementById('time').addEventListener('input', draw);
 document.getElementById('charges').addEventListener('change', ()=>{
-  document.getElementById('chargeModeHint').textContent='Встановлено вручну';
+  const d=parseFloat(document.getElementById('distance').value);
+  const recommended=autoCharges(Number.isFinite(d)?Math.max(0,Math.min(30,d)):0);
+  const selected=parseInt(document.getElementById('charges').value,10);
+
+  if(selected===recommended){
+    chargesManuallySet = false;
+    setChargeFromDistance();
+  } else {
+    chargesManuallySet = true;
+    document.getElementById('chargeModeHint').textContent =
+      window.currentLang === 'en' ? 'Set manually' : 'Встановлено вручну';
+  }
   draw();
   validateInputs();
 });
